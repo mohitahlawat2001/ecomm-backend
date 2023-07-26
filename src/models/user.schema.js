@@ -1,5 +1,9 @@
 import mongoose from "mongoose";
+import AuthRoles from "../utils/AuthRoles.js";
 import bcrypt from "bcryptjs";
+import JWT from "jsonwebtoken";
+import config  from "../config/index.js";
+import crypto from "crypto";
 
 const userSchema = new mongoose.Schema({
     name: {
@@ -39,7 +43,29 @@ userSchema.methods ={
     // check if password is correct
     comparePassword: async function ( enteredPassword) {
         return await bcrypt.compare(enteredPassword, this.password);
-    }
+    },
+    // generate JWT token for user
+    getJWTtoken: function () {
+        return JWT.sign({ _id: this._id }, config.JWT_SECRET, {
+            expiresIn: config.JWT_EXPIRY,
+        });
+    },
+    // generate password reset token
+    generateForgotPasswordToken: function () {
+        const resetToken = crypto.randomBytes(20).toString("hex");
+
+        // just to encrypt the token
+        this.forgotPasswordToken = crypto
+            .createHash("sha256")
+            .update(resetToken)
+            .digest("hex");
+
+        // set token expiry to 10 minutes
+        this.forgotPasswordExpiry = Date.now() + 10 * (60 * 1000);
+
+        // return plain token
+        return resetToken;
+    },
 }
 
 
